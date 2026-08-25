@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🧩🌈 Jigsaw Rush</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #F8F4FF;
+            --bg-secondary: #E9DDFF;
+            --accent-pink: #FFD6E7;
+            --accent-purple: #DCCBFF;
+            --accent-blue: #C8F1FF;
+            --accent-mint: #CFF7E3;
+            --accent-yellow: #FFF1A8;
+            --accent-peach: #FFDAB9;
+            --text-dark: #4A4A6A;
+            --text-light: #7A7A9A;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-medium: 0 8px 30px rgba(0,0,0,0.12);
+            --radius: 20px;
+            --radius-sm: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideIn { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes confetti { 0%{transform:translateY(0)rotate(0deg);opacity:1} 100%{transform:translateY(-100vh)rotate(720deg);opacity:0} }
+        @keyframes snap { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+        @keyframes hintPulse { 0%,100%{box-shadow:0 0 10px rgba(255,215,0,0.5)} 50%{box-shadow:0 0 30px rgba(255,215,0,0.9)} }
+        .fade-in { animation: fadeIn 0.5s ease-out }
+        .slide-in { animation: slideIn 0.4s ease-out }
+        .screen { display: none; min-height: 100vh; padding: 20px }
+        .screen.active { display: block }
+
+        /* MENU */
+        #menu-screen {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--accent-pink) 50%, var(--accent-purple) 100%);
+            text-align: center; padding-top: 60px;
+        }
+        .game-title {
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            font-weight: 900; color: var(--text-dark);
+            text-shadow: 3px 3px 0px rgba(255,255,255,0.5);
+            margin-bottom: 10px; animation: float 3s ease-in-out infinite;
+        }
+        .game-subtitle { font-size: 1.2rem; color: var(--text-light); font-weight: 600; margin-bottom: 40px }
+        .menu-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px; max-width: 600px; margin: 0 auto; padding: 0 10px;
+        }
+        .menu-btn {
+            background: white; border: none; border-radius: var(--radius);
+            padding: 20px 15px; font-family: 'Nunito', sans-serif;
+            font-size: 1rem; font-weight: 700; color: var(--text-dark);
+            cursor: pointer; box-shadow: var(--shadow-soft);
+            transition: all 0.3s ease;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        .menu-btn:hover { transform: translateY(-5px); box-shadow: var(--shadow-medium) }
+        .menu-btn .icon { font-size: 2rem }
+        .menu-btn.primary {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            color: white; grid-column: span 2; font-size: 1.3rem; padding: 25px;
+        }
+
+        /* LEVELS */
+        #levels-screen { background: var(--bg-primary); padding-top: 20px }
+        .screen-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; max-width: 900px; margin-left: auto; margin-right: auto;
+        }
+        .back-btn {
+            background: white; border: none; border-radius: 50%;
+            width: 48px; height: 48px; font-size: 1.5rem;
+            cursor: pointer; box-shadow: var(--shadow-soft); transition: transform 0.2s;
+        }
+        .back-btn:hover { transform: scale(1.1) }
+        .screen-title { font-size: 1.8rem; font-weight: 800 }
+        .tier-section { max-width: 900px; margin: 0 auto 30px }
+        .tier-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
+            padding: 10px 15px; background: white; border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-soft);
+        }
+        .tier-dot { width: 16px; height: 16px; border-radius: 50% }
+        .tier-name { font-weight: 700; font-size: 1.1rem }
+        .levels-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px;
+        }
+        .level-card {
+            background: white; border-radius: var(--radius-sm); padding: 15px 10px;
+            text-align: center; cursor: pointer; box-shadow: var(--shadow-soft);
+            transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .level-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-medium) }
+        .level-card.locked { opacity: 0.5; cursor: not-allowed }
+        .level-card.locked::after {
+            content: '🔒'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 1.5rem;
+        }
+        .level-num { font-size: 1.3rem; font-weight: 800; color: var(--text-dark) }
+        .level-name { font-size: 0.75rem; color: var(--text-light); margin: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+        .level-stars { font-size: 0.9rem; letter-spacing: 2px }
+        .level-stars .empty { opacity: 0.3 }
+
+        /* GAME */
+        #game-screen {
+            background: var(--bg-primary); padding: 0;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+        .game-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 15px; background: white; box-shadow: var(--shadow-soft);
+            z-index: 100; flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+        }
+        .game-info { display: flex; gap: 15px; align-items: center; flex-wrap: wrap }
+        .info-pill {
+            background: var(--bg-primary); padding: 6px 14px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;
+        }
+        .game-controls { display: flex; gap: 8px; flex-wrap: wrap }
+        .ctrl-btn {
+            background: white; border: 2px solid var(--accent-purple); border-radius: var(--radius-sm);
+            padding: 8px 14px; font-family: 'Nunito', sans-serif; font-weight: 700;
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .ctrl-btn:hover { background: var(--accent-purple); color: white }
+        .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed }
+        .game-area { flex: 1; display: flex; overflow: hidden; position: relative }
+        #puzzle-container {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 15px; position: relative; overflow: auto;
+        }
+        #puzzle-canvas {
+            box-shadow: var(--shadow-medium); border-radius: 12px;
+            background: white; max-width: 100%; max-height: 100%;
+        }
+        .pieces-sidebar {
+            width: 220px; background: white; border-left: 3px solid var(--accent-purple);
+            padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+        }
+        .pieces-sidebar h3 { font-size: 1rem; text-align: center; margin-bottom: 5px }
+        #pieces-tray {
+            flex: 1; position: relative; background: var(--bg-primary);
+            border-radius: var(--radius-sm); overflow: hidden; min-height: 200px;
+        }
+
+        /* OVERLAYS */
+        .completion-overlay, .pause-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(5px);
+        }
+        .completion-overlay { background: rgba(0,0,0,0.7) }
+        .pause-overlay { background: rgba(0,0,0,0.6) }
+        .completion-overlay.active, .pause-overlay.active { display: flex }
+        .completion-card {
+            background: white; border-radius: var(--radius); padding: 40px;
+            text-align: center; max-width: 400px; width: 90%;
+            animation: fadeIn 0.5s ease-out; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .completion-card h2 { font-size: 2rem; margin-bottom: 10px; color: var(--text-dark) }
+        .completion-card .stars { font-size: 3rem; margin: 15px 0; animation: pulse 1s ease-in-out infinite }
+        .completion-stats {
+            background: var(--bg-primary); border-radius: var(--radius-sm);
+            padding: 15px; margin: 20px 0; text-align: left;
+        }
+        .completion-stats div { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 600 }
+        .completion-btns { display: flex; gap: 10px; margin-top: 20px }
+        .completion-btns button {
+            flex: 1; padding: 12px; border: none; border-radius: var(--radius-sm);
+            font-family: 'Nunito', sans-serif; font-weight: 700; cursor: pointer; transition: transform 0.2s;
+        }
+        .completion-btns button:hover { transform: scale(1.05) }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple)); color: white;
+        }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-dark) }
+        .pause-card {
+            background: white; border-radius: var(--radius); padding: 30px; text-align: center; width: 300px;
+        }
+        .pause-card h2 { margin-bottom: 20px; font-size: 1.8rem }
+        .pause-card button {
+            width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: var(--radius-sm);
+            font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s;
+        }
+        .pause-card button:hover { transform: scale(1.03) }
+
+        /* STATS */
+        #stats-screen { background: var(--bg-primary); padding-top: 20px }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; max-width: 800px; margin: 20px auto;
+        }
+        .stat-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            text-align: center; box-shadow: var(--shadow-soft);
+        }
+        .stat-value { font-size: 2rem; font-weight: 900; color: var(--text-dark) }
+        .stat-label { color: var(--text-light); font-weight: 600; margin-top: 5px }
+
+        /* ACHIEVEMENTS */
+        #achievements-screen { background: var(--bg-primary); padding-top: 20px }
+        .achievements-list {
+            max-width: 700px; margin: 20px auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .achievement-item {
+            background: white; border-radius: var(--radius-sm); padding: 15px 20px;
+            display: flex; align-items: center; gap: 15px;
+            box-shadow: var(--shadow-soft); transition: all 0.3s;
+        }
+        .achievement-item.unlocked { border-left: 4px solid #FFD700 }
+        .achievement-item.locked { opacity: 0.6 }
+        .achievement-icon { font-size: 2rem; width: 50px; text-align: center }
+        .achievement-info h4 { font-size: 1.1rem; margin-bottom: 3px }
+        .achievement-info p { font-size: 0.85rem; color: var(--text-light) }
+
+        /* COLLECTION */
+        #collection-screen { background: var(--bg-primary); padding-top: 20px }
+        .collection-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px; max-width: 900px; margin: 20px auto;
+        }
+        .collection-item {
+            background: white; border-radius: var(--radius-sm); overflow: hidden;
+            box-shadow: var(--shadow-soft); cursor: pointer; transition: transform 0.3s;
+        }
+        .collection-item:hover { transform: translateY(-5px) }
+        .collection-item img { width: 100%; height: 120px; object-fit: cover }
+        .collection-item.locked img { filter: grayscale(100%) blur(3px) }
+        .collection-item .item-info { padding: 10px; text-align: center }
+        .collection-item .item-info h4 { font-size: 0.9rem; margin-bottom: 3px }
+        .collection-item .item-info span { font-size: 0.75rem; color: var(--text-light) }
+
+        /* DAILY */
+        #daily-screen { background: var(--bg-primary); padding-top: 20px; text-align: center }
+        .daily-card {
+            max-width: 500px; margin: 30px auto; background: white;
+            border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-medium);
+        }
+        .daily-card img { width: 100%; border-radius: var(--radius-sm); margin-bottom: 20px }
+        .daily-stats { display: flex; justify-content: space-around; margin: 20px 0 }
+        .daily-stat { text-align: center }
+        .daily-stat .value { font-size: 1.5rem; font-weight: 800 }
+        .daily-stat .label { font-size: 0.8rem; color: var(--text-light) }
+
+        /* THEMES */
+        #themes-screen { background: var(--bg-primary); padding-top: 20px }
+        .themes-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px; max-width: 800px; margin: 20px auto;
+        }
+        .theme-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            text-align: center; cursor: pointer; box-shadow: var(--shadow-soft);
+            transition: all 0.3s; border: 3px solid transparent;
+        }
+        .theme-card:hover { transform: translateY(-5px) }
+        .theme-card.active { border-color: var(--accent-purple); box-shadow: 0 0 20px rgba(220,203,255,0.5) }
+        .theme-preview { width: 100%; height: 80px; border-radius: var(--radius-sm); margin-bottom: 10px }
+
+        /* HOW TO */
+        #howto-screen { background: var(--bg-primary); padding-top: 20px }
+        .howto-content {
+            max-width: 700px; margin: 20px auto; background: white;
+            border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-soft);
+        }
+        .howto-step { display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-start }
+        .howto-step .step-num {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            color: white; width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; flex-shrink: 0;
+        }
+        .howto-step h4 { margin-bottom: 5px }
+        .howto-step p { color: var(--text-light); font-size: 0.95rem }
+
+        /* CONFETTI */
+        .confetti-container {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; z-index: 2000; overflow: hidden;
+        }
+        .confetti-piece {
+            position: absolute; width: 10px; height: 10px;
+            animation: confetti 3s ease-out forwards;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .game-area { flex-direction: column }
+            .pieces-sidebar {
+                width: 100%; height: 150px; border-left: none;
+                border-top: 3px solid var(--accent-purple); flex-direction: row; padding: 10px;
+            }
+            #pieces-tray { min-height: auto; flex: 1 }
+            .menu-grid { grid-template-columns: repeat(2, 1fr) }
+            .menu-btn.primary { grid-column: span 2 }
+            .levels-grid { grid-template-columns: repeat(3, 1fr) }
+            .game-header { flex-wrap: wrap }
+            .game-info { gap: 8px }
+            .info-pill { font-size: 0.8rem; padding: 4px 10px }
+        }
+        @media (max-width: 480px) {
+            .levels-grid { grid-template-columns: repeat(2, 1fr) }
+            .menu-grid { grid-template-columns: 1fr }
+            .menu-btn.primary { grid-column: span 1 }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+<!-- MAIN MENU -->
+<div id="menu-screen" class="screen active">
+    <h1 class="game-title">🧩🌈 JIGSAW RUSH</h1>
+    <p class="game-subtitle">Piece by Piece. Picture by Picture.</p>
+    <div class="menu-grid">
+        <button class="menu-btn primary" onclick="showScreen('levels')">
+            <span class="icon">▶</span><span>PLAY</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('levels')">
+            <span class="icon">🗺️</span><span>LEVELS</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('daily')">
+            <span class="icon">🌟</span><span>DAILY PUZZLE</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('collection')">
+            <span class="icon">🖼️</span><span>COLLECTION</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('achievements')">
+            <span class="icon">🏆</span><span>ACHIEVEMENTS</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('stats')">
+            <span class="icon">📊</span><span>STATISTICS</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('themes')">
+            <span class="icon">🎨</span><span>THEMES</span>
+        </button>
+        <button class="menu-btn" onclick="showScreen('howto')">
+            <span class="icon">❓</span><span>HOW TO PLAY</span>
+        </button>
+    </div>
+</div>
+
+<!-- LEVELS -->
+<div id="levels-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">🗺️ Select Level</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div id="levels-content"></div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+    <div class="game-header">
+        <div class="game-info">
+            <div class="info-pill">🧩 <span id="level-display">Level 1</span></div>
+            <div class="info-pill">⏱️ <span id="timer-display">00:00</span></div>
+            <div class="info-pill">💡 <span id="hints-display">3</span></div>
+        </div>
+        <div class="game-controls">
+            <button class="ctrl-btn" id="rotate-btn" onclick="rotateSelectedPiece()">↻ Rotate</button>
+            <button class="ctrl-btn" onclick="useHint()">💡 Hint</button>
+            <button class="ctrl-btn" onclick="togglePreview()">👁 Preview</button>
+            <button class="ctrl-btn" onclick="pauseGame()">⏸️ Pause</button>
+        </div>
+    </div>
+    <div class="game-area">
+        <div id="puzzle-container">
+            <canvas id="puzzle-canvas"></canvas>
+        </div>
+        <div class="pieces-sidebar" id="pieces-sidebar">
+            <h3>🧩 Pieces</h3>
+            <div id="pieces-tray">
+                <canvas id="tray-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- COMPLETION -->
+<div class="completion-overlay" id="completion-overlay">
+    <div class="completion-card">
+        <h2>🎉 Puzzle Complete!</h2>
+        <p style="color: var(--text-light); font-weight: 600;">Beautifully Done!</p>
+        <div class="stars" id="completion-stars">⭐⭐⭐</div>
+        <div class="completion-stats">
+            <div><span>Time</span><span id="comp-time">00:00</span></div>
+            <div><span>Pieces</span><span id="comp-pieces">0</span></div>
+            <div><span>Hints Used</span><span id="comp-hints">0</span></div>
+            <div><span>Score</span><span id="comp-score">0</span></div>
+        </div>
+        <div class="completion-btns">
+            <button class="btn-secondary" onclick="backToMenu()">Menu</button>
+            <button class="btn-primary" onclick="nextLevel()">Next Level →</button>
+        </div>
+    </div>
+</div>
+
+<!-- PAUSE -->
+<div class="pause-overlay" id="pause-overlay">
+    <div class="pause-card">
+        <h2>⏸️ Paused</h2>
+        <button class="btn-primary" onclick="resumeGame()">▶ Resume</button>
+        <button style="background: var(--accent-blue); width:100%; padding:14px; margin:8px 0; border:none; border-radius:12px; font-family:Nunito; font-weight:700; font-size:1rem; cursor:pointer;" onclick="restartLevel()">🔄 Restart</button>
+        <button style="background: var(--accent-mint); width:100%; padding:14px; margin:8px 0; border:none; border-radius:12px; font-family:Nunito; font-weight:700; font-size:1rem; cursor:pointer;" onclick="showScreen('menu')">🏠 Main Menu</button>
+    </div>
+</div>
+
+<!-- STATS -->
+<div id="stats-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">📊 Statistics</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+</div>
+
+<!-- ACHIEVEMENTS -->
+<div id="achievements-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">🏆 Achievements</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="achievements-list" id="achievements-list"></div>
+</div>
+
+<!-- COLLECTION -->
+<div id="collection-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">🖼️ Collection</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="collection-grid" id="collection-grid"></div>
+</div>
+
+<!-- DAILY -->
+<div id="daily-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">🌟 Daily Puzzle</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="daily-card" id="daily-card"></div>
+</div>
+
+<!-- THEMES -->
+<div id="themes-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">🎨 Themes</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="themes-grid" id="themes-grid"></div>
+</div>
+
+<!-- HOW TO -->
+<div id="howto-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="showScreen('menu')">←</button>
+        <h2 class="screen-title">❓ How to Play</h2>
+        <div style="width:48px"></div>
+    </div>
+    <div class="howto-content">
+        <div class="howto-step">
+            <div class="step-num">1</div>
+            <div><h4>Select a Puzzle</h4><p>Choose from 50 levels across 10 difficulty tiers. Start with easy 12-piece puzzles and work your way up to 256-piece legends!</p></div>
+        </div>
+        <div class="howto-step">
+            <div class="step-num">2</div>
+            <div><h4>Drag & Drop Pieces</h4><p>Click or touch a piece to pick it up. Drag it to the puzzle board. On mobile, pieces are sized for easy touch interaction.</p></div>
+        </div>
+        <div class="howto-step">
+            <div class="step-num">3</div>
+            <div><h4>Rotate When Needed</h4><p>Harder levels have rotated pieces. Use the ↻ Rotate button, right-click, or double-tap to rotate a piece 90°.</p></div>
+        </div>
+        <div class="howto-step">
+            <div class="step-num">4</div>
+            <div><h4>Magnetic Snap</h4><p>When a piece is close to its correct position, it will snap into place with a satisfying animation. Connected pieces form groups!</p></div>
+        </div>
+        <div class="howto-step">
+            <div class="step-num">5</div>
+            <div><h4>Use Hints Wisely</h4><p>Hints are limited! They can highlight the next piece, show ghost placement, or auto-place a piece. Save them for tough spots.</p></div>
+        </div>
+        <div class="howto-step">
+            <div class="step-num">6</div>
+            <div><h4>Earn Stars & Unlock</h4><p>Complete puzzles quickly and without hints to earn 3 stars. Unlock new levels, images, and themes as you progress!</p></div>
+        </div>
+    </div>
+</div>
+
+<div class="confetti-container" id="confetti-container"></div>
+
+<script>
+// ============================================================
+// JIGSAW RUSH - Complete Game Engine
+// ============================================================
+
+const IMAGE_IDS = [
+    10,11,12,13,15,16,17,18,19,20,
+    28,29,42,49,50,54,57,58,60,76,
+    101,103,104,106,110,152,164,175,192,200,
+    201,203,206,214,225,239,244,247,250,251,
+    254,255,256,259,260,265,278,283,288,289
+];
+
+const CATEGORIES = ['🌸 Nature','🏙️ Cities','🌊 Travel','🐼 Animals','🏰 Fantasy','🚀 Space','🍰 Food','🎨 Art','🧸 Cute World'];
+const tierColors = ['#4CAF50','#2196F3','#9C27B0','#E91E63','#FF9800','#F44336','#673AB7','#3F51B5','#009688','#FF5722'];
+const tierNames = ['Beginner','Easy','Normal','Advanced','Expert','Master','Extreme','Logic Master','Nightmare','Legend'];
+
+const LEVELS = [];
+const names = [
+    'First Piece','Color Garden','Sunny Beach','Cute Friends','Magical Garden',
+    'Tropical Paradise','City Lights','Panda Play','Waterfall Dream','Flower Field',
+    'Mountain View','Castle Gate','Street Market','Deep Forest','Ocean Sunset',
+    'Blue Horizon','Ancient Temple','Snowy Peak','River Valley','Golden Meadow',
+    'Busy Harbor','Night Festival','Colorful Market','Autumn Path','Winter Cabin',
+    'Space Station','Galaxy View','Planet Rise','Nebula Dreams','Star Field',
+    'Fantasy Castle','Enchanted Woods','Floating Island','Dragon Peak','Magic Garden',
+    'Sweet Dessert','Fruit Basket','Coffee Time','Ice Cream','Candy World',
+    'Abstract Flow','Geometric Art','Color Waves','Modern Art','Creative Mind',
+    'Toy Room','Cute Kitchen','Playground','Bedtime Story','Dream World',
+    'The Ultimate Puzzle'
+];
+const cats = [0,0,2,3,0, 2,1,3,0,0, 0,4,1,0,2, 2,1,0,0,0, 1,1,1,0,0, 5,5,5,5,5, 4,4,4,4,4, 6,6,6,6,6, 7,7,7,7,7, 8,8,8,8,4];
+const pieceCounts = [12,12,16,16,20, 24,30,36,40,48, 48,54,60,64,72, 80,90,100,108,120, 120,128,132,144,144, 150,160,169,180,196, 196,200,210,220,225, 225,230,240,250,256, 256,256,256,256,256, 256,256,256,256,256];
+const grids = [[3,4],[3,4],[4,4],[4,4],[4,5],[4,6],[5,6],[6,6],[5,8],[6,8],[6,8],[6,9],[6,10],[8,8],[8,9],[8,10],[9,10],[10,10],[9,12],[10,12],[10,12],[8,16],[11,12],[12,12],[12,12],[10,15],[10,16],[13,13],[12,15],[14,14],[14,14],[10,20],[14,15],[11,20],[15,15],[15,15],[15,16],[15,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16],[16,16]];
+const rotations = [false,false,false,false,false, false,false,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true, true,true,true,true,true];
+const targets = ['02:00','02:00','02:30','02:30','03:00','03:00','03:30','04:00','04:30','05:00','05:00','05:30','06:00','06:30','07:00','07:00','07:30','08:00','08:30','09:00','09:00','09:30','10:00','10:30','11:00','11:00','11:30','12:00','12:30','13:00','13:00','13:30','14:00','14:30','15:00','15:00','15:30','16:00','16:30','17:00','17:00','17:30','18:00','18:30','19:00','19:00','19:30','20:00','20:30','25:00'];
+const hints = [99,99,5,5,5, 4,4,4,3,3, 3,3,3,2,2, 2,2,2,2,2, 2,1,1,1,1, 1,1,1,1,1, 1,1,1,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0];
+
+for (let i=0; i<50; i++) {
+    LEVELS.push({
+        id: i+1, name: names[i], imageId: IMAGE_IDS[i], category: cats[i],
+        pieces: pieceCounts[i], grid: grids[i], rotation: rotations[i],
+        timeTarget: targets[i], hints: hints[i], tier: Math.floor(i/5),
+        difficulty: tierNames[Math.floor(i/5)]
+    });
+}
+
+const THEMES = [
+    { id:'pink', name:'🌸 Pink Garden', colors:{bg:'#F8F4FF',primary:'#FFD6E7',secondary:'#DCCBFF',accent:'#E9DDFF'} },
+    { id:'galaxy', name:'🌌 Galaxy', colors:{bg:'#1a1a2e',primary:'#16213e',secondary:'#0f3460',accent:'#e94560'} },
+    { id:'ocean', name:'🌊 Ocean', colors:{bg:'#e0f7fa',primary:'#b2ebf2',secondary:'#80deea',accent:'#4dd0e1'} },
+    { id:'nature', name:'🌿 Nature', colors:{bg:'#f1f8e9',primary:'#dcedc8',secondary:'#c5e1a5',accent:'#aed581'} },
+    { id:'sunset', name:'🍑 Sunset', colors:{bg:'#fff3e0',primary:'#ffe0b2',secondary:'#ffcc80',accent:'#ffb74d'} },
+    { id:'rainbow', name:'🌈 Rainbow', colors:{bg:'#fafafa',primary:'#ffcdd2',secondary:'#f8bbd0',accent:'#e1bee7'} }
+];
+
+const ACHIEVEMENTS = [
+    { id:'first', name:'🧩 First Puzzle', desc:'Complete your first puzzle', condition:s=>s.completed>=1 },
+    { id:'speed', name:'⚡ Speed Builder', desc:'Complete a puzzle under 3 minutes', condition:s=>s.bestTime&&s.bestTime<180 },
+    { id:'perfect', name:'💎 Perfect Builder', desc:'Earn 3 stars on any puzzle', condition:s=>Object.values(window.gameState?window.gameState.stars:{}).some(v=>v===3) },
+    { id:'nohint', name:'🧠 No Hint', desc:'Complete without using hints', condition:s=>s.noHintCompletes>0 },
+    { id:'streak7', name:'🔥 7-Day Streak', desc:'Complete Daily Puzzle for 7 days', condition:s=>s.dailyStreak>=7 },
+    { id:'puzzles25', name:'🏆 25 Puzzles', desc:'Complete 25 puzzles', condition:s=>s.completed>=25 },
+    { id:'legend', name:'👑 Jigsaw Legend', desc:'Complete Level 50', condition:s=>s.completedLevels&&s.completedLevels.includes(50) },
+    { id:'collector', name:'🌈 Color Collector', desc:'Complete puzzles from every category', condition:s=>new Set(s.completedCategories||[]).size>=5 }
+];
+
+let gameState = {
+    currentLevel:1, completedLevels:[], stars:{}, bestTimes:{},
+    stats:{completed:0,bestTime:null,totalTime:0,piecesPlaced:0,hintsUsed:0,perfectGames:0,currentStreak:0,longestStreak:0,noHintCompletes:0,completedCategories:[]},
+    achievements:{}, daily:{lastDate:null,completed:false,streak:0},
+    theme:'pink', sound:true
+};
+
+let canvas, ctx, trayCanvas, trayCtx;
+let pieces=[], groups=[];
+let image=null, currentLevelData=null;
+let gameStartTime=0, gameTimer=null, gamePaused=false;
+let hintsRemaining=0, selectedPiece=null, isDragging=false;
+let dragOffset={x:0,y:0}, previewMode=false, hintPiece=null;
+let pieceSize={w:0,h:0}, boardSize={w:0,h:0};
+let lastPointerPos = {x:0,y:0};
+
+function loadState() {
+    try {
+        const saved = localStorage.getItem('jigsawRush_save');
+        if (saved) gameState = {...gameState, ...JSON.parse(saved)};
+    } catch(e){}
+}
+function saveState() {
+    try { localStorage.setItem('jigsawRush_save', JSON.stringify(gameState)); } catch(e){}
+}
+
+function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(name+'-screen').classList.add('active');
+    if(name==='levels') renderLevels();
+    if(name==='stats') renderStats();
+    if(name==='achievements') renderAchievements();
+    if(name==='collection') renderCollection();
+    if(name==='daily') renderDaily();
+    if(name==='themes') renderThemes();
+}
+
+function renderLevels() {
+    const container = document.getElementById('levels-content');
+    container.innerHTML = '';
+    for(let t=0; t<10; t++) {
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'tier-section';
+        tierDiv.innerHTML = `
+            <div class="tier-header">
+                <div class="tier-dot" style="background:${tierColors[t]}"></div>
+                <span class="tier-name">Tier ${t+1} — ${tierNames[t]}</span>
+            </div>
+            <div class="levels-grid" id="tier-grid-${t}"></div>
+        `;
+        container.appendChild(tierDiv);
+        const grid = document.getElementById(`tier-grid-${t}`);
+        for(let l=t*5; l<(t+1)*5; l++) {
+            const level = LEVELS[l];
+            const isUnlocked = l===0 || gameState.completedLevels.includes(l);
+            const stars = gameState.stars[level.id] || 0;
+            const card = document.createElement('div');
+            card.className = 'level-card ' + (isUnlocked?'':'locked');
+            card.innerHTML = `
+                <div class="level-num">${level.id}</div>
+                <div class="level-name">${level.name}</div>
+                <div class="level-stars">
+                    ${[1,2,3].map(i=>`<span class="${i<=stars?'':'empty'}">⭐</span>`).join('')}
+                </div>
+            `;
+            if(isUnlocked) card.onclick = ()=>startLevel(level.id);
+            grid.appendChild(card);
+        }
+    }
+}
+
+function loadImage(id) {
+    return new Promise(resolve=>{
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = ()=>resolve(img);
+        img.onerror = ()=>{ img.src = `https://picsum.photos/seed/jigsaw${id}/800/600`; };
+        img.src = `https://picsum.photos/id/${id}/800/600`;
+    });
+}
+
+function mulberry32(a) {
+    return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+}
+
+function generateJigsawShape(seed) {
+    const rng = mulberry32(seed);
+    return { top: rng()>0.5?1:-1, right: rng()>0.5?1:-1, bottom: rng()>0.5?1:-1, left: rng()>0.5?1:-1 };
+}
+
+function createPiecePath(ctx, w, h, shape) {
+    const tabSize = Math.min(w,h)*0.22;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    if(shape.top!==0) {
+        const dir=shape.top;
+        ctx.lineTo(w*0.35,0);
+        ctx.bezierCurveTo(w*0.35,-tabSize*dir, w*0.65,-tabSize*dir, w*0.65,0);
+        ctx.lineTo(w,0);
+    } else ctx.lineTo(w,0);
+    if(shape.right!==0) {
+        const dir=shape.right;
+        ctx.lineTo(w,h*0.35);
+        ctx.bezierCurveTo(w+tabSize*dir,h*0.35, w+tabSize*dir,h*0.65, w,h*0.65);
+        ctx.lineTo(w,h);
+    } else ctx.lineTo(w,h);
+    if(shape.bottom!==0) {
+        const dir=shape.bottom;
+        ctx.lineTo(w*0.65,h);
+        ctx.bezierCurveTo(w*0.65,h+tabSize*dir, w*0.35,h+tabSize*dir, w*0.35,h);
+        ctx.lineTo(0,h);
+    } else ctx.lineTo(0,h);
+    if(shape.left!==0) {
+        const dir=shape.left;
+        ctx.lineTo(0,h*0.65);
+        ctx.bezierCurveTo(-tabSize*dir,h*0.65, -tabSize*dir,h*0.35, 0,h*0.35);
+        ctx.lineTo(0,0);
+    } else ctx.lineTo(0,0);
+    ctx.closePath();
+}
+
+async function startLevel(levelId) {
+    const level = LEVELS[levelId-1];
+    currentLevelData = level;
+    gameState.currentLevel = levelId;
+    showScreen('game');
+    document.getElementById('level-display').textContent = `Level ${levelId}: ${level.name}`;
+    document.getElementById('hints-display').textContent = level.hints;
+    hintsRemaining = level.hints;
+    document.getElementById('rotate-btn').style.display = level.rotation ? 'flex' : 'none';
+
+    canvas = document.getElementById('puzzle-canvas');
+    ctx = canvas.getContext('2d');
+    trayCanvas = document.getElementById('tray-canvas');
+    trayCtx = trayCanvas.getContext('2d');
+
+    image = await loadImage(level.imageId);
+
+    const container = document.getElementById('puzzle-container');
+    const maxW = container.clientWidth - 40;
+    const maxH = container.clientHeight - 40;
+    const imgRatio = image.width / image.height;
+    let boardW = maxW, boardH = boardW / imgRatio;
+    if(boardH > maxH) { boardH = maxH; boardW = boardH * imgRatio; }
+    boardW = Math.floor(boardW); boardH = Math.floor(boardH);
+    boardSize = {w:boardW, h:boardH};
+
+    const cols=level.grid[0], rows=level.grid[1];
+    pieceSize = {w:boardW/cols, h:boardH/rows};
+
+    canvas.width = boardW + pieceSize.w*0.5;
+    canvas.height = boardH + pieceSize.h*0.5;
+
+    const sidebar = document.getElementById('pieces-sidebar');
+    trayCanvas.width = sidebar.clientWidth - 30;
+    trayCanvas.height = Math.max(400, rows*pieceSize.h*0.6);
+
+    pieces=[]; groups=[];
+    const shapes=[];
+    for(let r=0; r<rows; r++) {
+        shapes[r]=[];
+        for(let c=0; c<cols; c++) {
+            shapes[r][c] = generateJigsawShape(levelId*1000 + r*100 + c);
+        }
+    }
+    for(let c=0; c<cols; c++) { shapes[0][c].top=0; shapes[rows-1][c].bottom=0; }
+    for(let r=0; r<rows; r++) { shapes[r][0].left=0; shapes[r][cols-1].right=0; }
+
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            pieces.push({
+                id: r*cols+c, row:r, col:c,
+                correctX: c*pieceSize.w + pieceSize.w*0.25,
+                correctY: r*pieceSize.h + pieceSize.h*0.25,
+                x:0, y:0,
+                rotation: level.rotation ? Math.floor(Math.random()*4) : 0,
+                shape: shapes[r][c],
+                width: pieceSize.w, height: pieceSize.h,
+                groupId: null, inTray: true, scale: 1
+            });
+        }
+    }
+
+    scatterPieces();
+    setupGameEvents();
+    gameStartTime = Date.now();
+    gamePaused = false; previewMode = false; hintPiece = null;
+    startTimer();
+    requestAnimationFrame(render);
+}
+
+function scatterPieces() {
+    const trayW = trayCanvas.width, trayH = trayCanvas.height;
+    const cols = Math.floor(trayW / (pieceSize.w*0.7)) || 1;
+    pieces.forEach((piece,i)=>{
+        if(piece.inTray) {
+            piece.x = (i%cols)*pieceSize.w*0.75 + 10;
+            piece.y = Math.floor(i/cols)*pieceSize.h*0.75 + 10;
+        }
+    });
+}
+
+function startTimer() {
+    if(gameTimer) clearInterval(gameTimer);
+    gameTimer = setInterval(()=>{
+        if(!gamePaused) {
+            const elapsed = Math.floor((Date.now()-gameStartTime)/1000);
+            const mins = Math.floor(elapsed/60).toString().padStart(2,'0');
+            const secs = (elapsed%60).toString().padStart(2,'0');
+            document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+        }
+    },1000);
+}
+
+function getElapsedTime() { return Math.floor((Date.now()-gameStartTime)/1000); }
+
+function render() {
+    if(!ctx) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Board background
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(pieceSize.w*0.25, pieceSize.h*0.25, boardSize.w, boardSize.h);
+
+    // Preview
+    if(previewMode) {
+        ctx.globalAlpha = 0.25;
+        ctx.drawImage(image, pieceSize.w*0.25, pieceSize.h*0.25, boardSize.w, boardSize.h);
+        ctx.globalAlpha = 1;
+    }
+
+    // Grid outlines
+    ctx.strokeStyle = 'rgba(200,200,200,0.3)';
+    ctx.lineWidth = 1;
+    const cols=currentLevelData.grid[0], rows=currentLevelData.grid[1];
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            ctx.strokeRect(c*pieceSize.w+pieceSize.w*0.25, r*pieceSize.h+pieceSize.h*0.25, pieceSize.w, pieceSize.h);
+        }
+    }
+
+    // Draw board pieces
+    const boardPieces = pieces.filter(p=>!p.inTray);
+    boardPieces.forEach(piece=>drawPiece(ctx, piece, false));
+
+    renderTray();
+    requestAnimationFrame(render);
+}
+
+function drawPiece(context, piece, inTray) {
+    context.save();
+    const pw = inTray ? piece.width*0.6 : piece.width;
+    const ph = inTray ? piece.height*0.6 : piece.height;
+    const centerX = piece.x + pw/2;
+    const centerY = piece.y + ph/2;
+    context.translate(centerX, centerY);
+    context.rotate(piece.rotation * Math.PI/2);
+    context.translate(-pw/2, -ph/2);
+
+    const scale = inTray ? 0.6 : 1;
+    const shape = piece.shape;
+    createPiecePath(context, pw, ph, shape);
+    context.clip();
+
+    const imgScaleX = image.width / boardSize.w;
+    const imgScaleY = image.height / boardSize.h;
+    const srcX = piece.col * pieceSize.w * imgScaleX;
+    const srcY = piece.row * pieceSize.h * imgScaleY;
+    const srcW = pieceSize.w * imgScaleX;
+    const srcH = pieceSize.h * imgScaleY;
+
+    const offsetX = shape.left!==0 ? pieceSize.w*0.12*scale : 0;
+    const offsetY = shape.top!==0 ? pieceSize.h*0.12*scale : 0;
+
+    context.drawImage(image, srcX-offsetX*imgScaleX, srcY-offsetY*imgScaleY,
+        srcW+offsetX*imgScaleX*2, srcH+offsetY*imgScaleY*2,
+        -offsetX, -offsetY, pw+offsetX*2, ph+offsetY*2);
+
+    if(piece===selectedPiece) {
+        context.fillStyle = 'rgba(255,214,231,0.4)';
+        context.fill();
+    }
+    if(piece===hintPiece) {
+        context.fillStyle = 'rgba(255,215,0,0.3)';
+        context.fill();
+        context.strokeStyle = '#FFD700';
+        context.lineWidth = 3;
+        createPiecePath(context, pw, ph, shape);
+        context.stroke();
+    }
+    context.strokeStyle = 'rgba(0,0,0,0.15)';
+    context.lineWidth = 1;
+    createPiecePath(context, pw, ph, shape);
+    context.stroke();
+    context.restore();
+}
+
+function renderTray() {
+    if(!trayCtx) return;
+    trayCtx.clearRect(0,0,trayCanvas.width,trayCanvas.height);
+    trayCtx.fillStyle = 'rgba(255,255,255,0.5)';
+    trayCtx.fillRect(0,0,trayCanvas.width,trayCanvas.height);
+    pieces.filter(p=>p.inTray).forEach(piece=>drawPiece(trayCtx, piece, true));
+}
+
+function getCanvasPos(e, targetCanvas) {
+    const rect = targetCanvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) * (targetCanvas.width / rect.width),
+        y: (e.clientY - rect.top) * (targetCanvas.height / rect.height)
+    };
+}
+
+function hitTestPiece(piece, x, y, inTray) {
+    const pw = inTray ? piece.width*0.6 : piece.width;
+    const ph = inTray ? piece.height*0.6 : piece.height;
+    return x >= piece.x && x <= piece.x + pw && y >= piece.y && y <= piece.y + ph;
+}
+
+function setupGameEvents() {
+    canvas.onpointerdown = onPointerDown;
+    canvas.onpointermove = onPointerMove;
+    canvas.onpointerup = onPointerUp;
+    canvas.ondblclick = onDoubleClick;
+    trayCanvas.onpointerdown = onTrayPointerDown;
+}
+
+function onPointerDown(e) {
+    e.preventDefault();
+    const pos = getCanvasPos(e, canvas);
+    const boardPieces = pieces.filter(p=>!p.inTray).reverse();
+    for(let piece of boardPieces) {
+        if(hitTestPiece(piece, pos.x, pos.y, false)) {
+            selectedPiece = piece;
+            isDragging = true;
+            dragOffset.x = pos.x - piece.x;
+            dragOffset.y = pos.y - piece.y;
+            const idx = pieces.indexOf(piece);
+            pieces.splice(idx,1); pieces.push(piece);
+            canvas.setPointerCapture(e.pointerId);
+            return;
+        }
+    }
+}
+
+function onPointerMove(e) {
+    if(!isDragging || !selectedPiece) return;
+    e.preventDefault();
+    const pos = getCanvasPos(e, canvas);
+    selectedPiece.x = pos.x - dragOffset.x;
+    selectedPiece.y = pos.y - dragOffset.y;
+    checkSnap(selectedPiece);
+}
+
+function onPointerUp(e) {
+    if(!isDragging || !selectedPiece) return;
+    isDragging = false;
+    if(selectedPiece.y > canvas.height - 50) returnToTray(selectedPiece);
+    selectedPiece = null;
+}
+
+function onDoubleClick(e) {
+    const pos = getCanvasPos(e, canvas);
+    const boardPieces = pieces.filter(p=>!p.inTray).reverse();
+    for(let piece of boardPieces) {
+        if(hitTestPiece(piece, pos.x, pos.y, false)) {
+            rotatePiece(piece); return;
+        }
+    }
+}
+
+function onTrayPointerDown(e) {
+    e.preventDefault();
+    const pos = getCanvasPos(e, trayCanvas);
+    const trayPieces = pieces.filter(p=>p.inTray).reverse();
+    for(let piece of trayPieces) {
+        if(hitTestPiece(piece, pos.x, pos.y, true)) {
+            piece.inTray = false;
+            piece.x = (canvas.width - piece.width)/2;
+            piece.y = (canvas.height - piece.height)/2;
+            selectedPiece = piece;
+            isDragging = true;
+            dragOffset.x = piece.width/2;
+            dragOffset.y = piece.height/2;
+            return;
+        }
+    }
+}
+
+function returnToTray(piece) {
+    piece.inTray = true;
+    piece.groupId = null;
+    scatterPieces();
+}
+
+function rotatePiece(piece) {
+    if(!currentLevelData.rotation) return;
+    piece.rotation = (piece.rotation + 1) % 4;
+}
+
+function rotateSelectedPiece() {
+    if(selectedPiece && currentLevelData.rotation) rotatePiece(selectedPiece);
+}
+
+function checkSnap(piece) {
+    const snapDist = Math.min(pieceSize.w, pieceSize.h) * 0.35;
+    const placedPieces = pieces.filter(p=>!p.inTray && p!==piece);
+
+    // Snap to correct position
+    const cdx = piece.correctX - piece.x;
+    const cdy = piece.correctY - piece.y;
+    if(Math.sqrt(cdx*cdx + cdy*cdy) < snapDist && piece.rotation===0) {
+        piece.x = piece.correctX;
+        piece.y = piece.correctY;
+        checkCompletion(); return;
+    }
+
+    // Snap to neighbors
+    for(let other of placedPieces) {
+        const rowDiff = Math.abs(piece.row - other.row);
+        const colDiff = Math.abs(piece.col - other.col);
+        if(rowDiff + colDiff !== 1) continue;
+        if(piece.rotation !== other.rotation) continue;
+
+        let expectedDX=0, expectedDY=0;
+        if(piece.row === other.row) expectedDX = (piece.col - other.col) * pieceSize.w;
+        else expectedDY = (piece.row - other.row) * pieceSize.h;
+
+        const actualDX = piece.x - other.x;
+        const actualDY = piece.y - other.y;
+        const dist = Math.sqrt((actualDX-expectedDX)**2 + (actualDY-expectedDY)**2);
+
+        if(dist < snapDist) {
+            piece.x = other.x + expectedDX;
+            piece.y = other.y + expectedDY;
+            checkCompletion(); return;
+        }
+    }
+}
+
+function checkCompletion() {
+    const placedPieces = pieces.filter(p=>!p.inTray);
+    if(placedPieces.length !== pieces.length) return;
+    const allCorrect = pieces.every(p=>{
+        const dx = Math.abs(p.x - p.correctX);
+        const dy = Math.abs(p.y - p.correctY);
+        return dx < 5 && dy < 5 && p.rotation === 0;
+    });
+    if(allCorrect) completePuzzle();
+}
+
+function completePuzzle() {
+    clearInterval(gameTimer);
+    const elapsed = getElapsedTime();
+    const mins = Math.floor(elapsed/60).toString().padStart(2,'0');
+    const secs = (elapsed%60).toString().padStart(2,'0');
+
+    let stars = 1;
+    const targetParts = currentLevelData.timeTarget.split(':');
+    const targetSecs = parseInt(targetParts[0])*60 + parseInt(targetParts[1]);
+    if(elapsed <= targetSecs) stars = 2;
+    if(elapsed <= targetSecs && hintsRemaining === currentLevelData.hints) stars = 3;
+
+    if(!gameState.completedLevels.includes(currentLevelData.id)) {
+        gameState.completedLevels.push(currentLevelData.id);
+        gameState.stats.completed++;
+    }
+    const prevStars = gameState.stars[currentLevelData.id] || 0;
+    gameState.stars[currentLevelData.id] = Math.max(prevStars, stars);
+
+    if(!gameState.bestTimes[currentLevelData.id] || elapsed < gameState.bestTimes[currentLevelData.id])
+        gameState.bestTimes[currentLevelData.id] = elapsed;
+
+    gameState.stats.totalTime += elapsed;
+    gameState.stats.piecesPlaced += pieces.length;
+    gameState.stats.hintsUsed += (currentLevelData.hints - hintsRemaining);
+    if(stars===3) gameState.stats.perfectGames++;
+    if(hintsRemaining === currentLevelData.hints) gameState.stats.noHintCompletes++;
+
+    const cat = CATEGORIES[currentLevelData.category];
+    if(!gameState.stats.completedCategories.includes(cat))
+        gameState.stats.completedCategories.push(cat);
+    if(!gameState.stats.bestTime || elapsed < gameState.stats.bestTime)
+        gameState.stats.bestTime = elapsed;
+
+    checkAchievements();
+    saveState();
+
+    document.getElementById('comp-time').textContent = `${mins}:${secs}`;
+    document.getElementById('comp-pieces').textContent = pieces.length;
+    document.getElementById('comp-hints').textContent = currentLevelData.hints - hintsRemaining;
+    document.getElementById('comp-score').textContent = calculateScore(elapsed, stars);
+    document.getElementById('completion-stars').innerHTML = '⭐'.repeat(stars) + '<span style="opacity:0.3">⭐</span>'.repeat(3-stars);
+    document.getElementById('completion-overlay').classList.add('active');
+    spawnConfetti();
+}
+
+function calculateScore(time, stars) {
+    const base = currentLevelData.pieces * 10;
+    const targetParts = currentLevelData.timeTarget.split(':');
+    const targetSecs = parseInt(targetParts[0])*60 + parseInt(targetParts[1]);
+    const speedBonus = Math.max(0, (targetSecs - time) * 5);
+    const starBonus = stars * 500;
+    const hintPenalty = (currentLevelData.hints - hintsRemaining) * 50;
+    return Math.max(0, base + speedBonus + starBonus - hintPenalty);
+}
+
+function spawnConfetti() {
+    const container = document.getElementById('confetti-container');
+    container.innerHTML = '';
+    const colors = ['#FFD6E7','#DCCBFF','#C8F1FF','#CFF7E3','#FFF1A8','#FFDAB9'];
+    for(let i=0; i<50; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.cssText = `left:${Math.random()*100}%;top:100%;background:${colors[Math.floor(Math.random()*colors.length)]};width:${Math.random()*10+5}px;height:${Math.random()*10+5}px;animation-delay:${Math.random()*2}s;animation-duration:${Math.random()*2+2}s;`;
+        container.appendChild(piece);
+    }
+    setTimeout(()=>container.innerHTML='',5000);
+}
+
+function useHint() {
+    if(hintsRemaining <= 0 || !currentLevelData) return;
+    hintsRemaining--;
+    document.getElementById('hints-display').textContent = hintsRemaining;
+    const misplaced = pieces.filter(p=>{
+        const dx = Math.abs(p.x - p.correctX);
+        const dy = Math.abs(p.y - p.correctY);
+        return dx > 5 || dy > 5 || p.rotation !== 0;
+    });
+    if(misplaced.length === 0) return;
+    const target = misplaced[Math.floor(Math.random()*misplaced.length)];
+    target.inTray = false;
+    target.x = target.correctX;
+    target.y = target.correctY;
+    target.rotation = 0;
+    hintPiece = target;
+    setTimeout(()=>hintPiece=null, 1500);
+    checkCompletion();
+}
+
+function togglePreview() { previewMode = !previewMode; }
+function pauseGame() { gamePaused = true; document.getElementById('pause-overlay').classList.add('active'); }
+function resumeGame() {
+    gamePaused = false;
+    document.getElementById('pause-overlay').classList.remove('active');
+    gameStartTime = Date.now() - (getElapsedTime() * 1000);
+}
+function restartLevel() {
+    document.getElementById('pause-overlay').classList.remove('active');
+    document.getElementById('completion-overlay').classList.remove('active');
+    startLevel(currentLevelData.id);
+}
+function backToMenu() {
+    document.getElementById('completion-overlay').classList.remove('active');
+    showScreen('menu');
+}
+function nextLevel() {
+    document.getElementById('completion-overlay').classList.remove('active');
+    if(currentLevelData.id < 50) startLevel(currentLevelData.id + 1);
+    else showScreen('menu');
+}
+
+function checkAchievements() {
+    ACHIEVEMENTS.forEach(ach=>{
+        if(!gameState.achievements[ach.id] && ach.condition(gameState.stats)) {
+            gameState.achievements[ach.id] = true;
+        }
+    });
+}
+
+function renderAchievements() {
+    const list = document.getElementById('achievements-list');
+    list.innerHTML = '';
+    ACHIEVEMENTS.forEach(ach=>{
+        const unlocked = gameState.achievements[ach.id];
+        const div = document.createElement('div');
+        div.className = 'achievement-item ' + (unlocked?'unlocked':'locked');
+        div.innerHTML = `
+            <div class="achievement-icon">${ach.name.split(' ')[0]}</div>
+            <div class="achievement-info">
+                <h4>${ach.name.substring(ach.name.indexOf(' ')+1)}</h4>
+                <p>${ach.desc}</p>
+            </div>
+            <div style="margin-left:auto;font-size:1.5rem">${unlocked?'✅':'🔒'}</div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function renderStats() {
+    const grid = document.getElementById('stats-grid');
+    const s = gameState.stats;
+    const stats = [
+        {label:'Puzzles Completed', value:s.completed},
+        {label:'Best Time', value:s.bestTime?formatTime(s.bestTime):'--:--'},
+        {label:'Total Time', value:formatTime(s.totalTime)},
+        {label:'Pieces Placed', value:s.piecesPlaced.toLocaleString()},
+        {label:'Hints Used', value:s.hintsUsed},
+        {label:'Perfect Games', value:s.perfectGames},
+        {label:'Current Streak', value:(s.currentStreak||0)+' Days'},
+        {label:'Longest Streak', value:(s.longestStreak||0)+' Days'}
+    ];
+    grid.innerHTML = stats.map(stat=>`
+        <div class="stat-card">
+            <div class="stat-value">${stat.value}</div>
+            <div class="stat-label">${stat.label}</div>
+        </div>
+    `).join('');
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds/60).toString().padStart(2,'0');
+    const secs = (seconds%60).toString().padStart(2,'0');
+    return `${mins}:${secs}`;
+}
+
+function renderCollection() {
+    const grid = document.getElementById('collection-grid');
+    grid.innerHTML = '';
+    LEVELS.forEach(level=>{
+        const unlocked = gameState.completedLevels.includes(level.id);
+        const div = document.createElement('div');
+        div.className = 'collection-item ' + (unlocked?'':'locked');
+        div.innerHTML = `
+            <img src="https://picsum.photos/id/${level.imageId}/300/200" alt="${level.name}" loading="lazy">
+            <div class="item-info">
+                <h4>${unlocked?level.name:'???'}</h4>
+                <span>${CATEGORIES[level.category]}</span>
+            </div>
+        `;
+        if(unlocked) div.onclick = ()=>startLevel(level.id);
+        grid.appendChild(div);
+    });
+}
+
+function renderDaily() {
+    const card = document.getElementById('daily-card');
+    const today = new Date().toDateString();
+    const dailyLevel = LEVELS[new Date().getDate() % 50];
+    if(gameState.daily.lastDate !== today && gameState.daily.lastDate !== new Date(Date.now()-86400000).toDateString()) {
+        gameState.daily.streak = 0;
+    }
+    const completedToday = gameState.daily.lastDate === today && gameState.daily.completed;
+    card.innerHTML = `
+        <img src="https://picsum.photos/id/${dailyLevel.imageId}/500/350" alt="Daily Puzzle">
+        <h3>🌟 Today's Puzzle</h3>
+        <p style="color:var(--text-light);margin:10px 0">${dailyLevel.name} — ${dailyLevel.pieces} pieces</p>
+        <div class="daily-stats">
+            <div class="daily-stat"><div class="value">${gameState.daily.streak||0}</div><div class="label">🔥 Streak</div></div>
+            <div class="daily-stat"><div class="value">${completedToday?'✅':'⏳'}</div><div class="label">Status</div></div>
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:15px;padding:15px;font-size:1.1rem;" onclick="startDaily()">${completedToday?'Play Again':'Play Daily Puzzle'}</button>
+    `;
+}
+
+function startDaily() {
+    const dailyLevel = LEVELS[new Date().getDate() % 50];
+    startLevel(dailyLevel.id);
+    // Wrap completion for daily tracking
+    const origComplete = completePuzzle;
+    completePuzzle = function() {
+        origComplete();
+        gameState.daily.lastDate = new Date().toDateString();
+        gameState.daily.completed = true;
+        gameState.daily.streak = (gameState.daily.streak||0) + 1;
+        if(gameState.daily.streak > gameState.stats.longestStreak)
+            gameState.stats.longestStreak = gameState.daily.streak;
+        gameState.stats.currentStreak = gameState.daily.streak;
+        saveState();
+    };
+}
+
+function renderThemes() {
+    const grid = document.getElementById('themes-grid');
+    grid.innerHTML = '';
+    THEMES.forEach(theme=>{
+        const div = document.createElement('div');
+        div.className = 'theme-card ' + (gameState.theme===theme.id?'active':'');
+        div.innerHTML = `
+            <div class="theme-preview" style="background:linear-gradient(135deg,${theme.colors.primary},${theme.colors.secondary})"></div>
+            <h4>${theme.name}</h4>
+        `;
+        div.onclick = ()=>applyTheme(theme.id);
+        grid.appendChild(div);
+    });
+}
+
+function applyTheme(themeId) {
+    gameState.theme = themeId;
+    const theme = THEMES.find(t=>t.id===themeId);
+    const root = document.documentElement;
+    root.style.setProperty('--bg-primary', theme.colors.bg);
+    root.style.setProperty('--accent-pink', theme.colors.primary);
+    root.style.setProperty('--accent-purple', theme.colors.secondary);
+    root.style.setProperty('--bg-secondary', theme.colors.accent);
+    saveState(); renderThemes();
+}
+
+document.addEventListener('keydown', e=>{
+    if(e.key==='Escape' && document.getElementById('game-screen').classList.contains('active')) pauseGame();
+    if((e.key==='r'||e.key==='R') && selectedPiece) rotateSelectedPiece();
+    if((e.key==='h'||e.key==='H')) useHint();
+});
+
+document.addEventListener('contextmenu', e=>{
+    if(document.getElementById('game-screen').classList.contains('active')) {
+        e.preventDefault();
+        if(selectedPiece) rotateSelectedPiece();
+    }
+});
+
+// INIT
+loadState();
+if(gameState.theme) {
+    const theme = THEMES.find(t=>t.id===gameState.theme);
+    if(theme) {
+        const root = document.documentElement;
+        root.style.setProperty('--bg-primary', theme.colors.bg);
+        root.style.setProperty('--accent-pink', theme.colors.primary);
+        root.style.setProperty('--accent-purple', theme.colors.secondary);
+        root.style.setProperty('--bg-secondary', theme.colors.accent);
+    }
+}
+checkAchievements();
+console.log('🧩🌈 Jigsaw Rush loaded! 50 levels ready.');
+</script>
+</body>
+</html>
