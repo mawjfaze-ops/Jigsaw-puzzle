@@ -673,37 +673,115 @@ function mulberry32(a) {
 
 function generateJigsawShape(seed) {
     const rng = mulberry32(seed);
-    return { top: rng()>0.5?1:-1, right: rng()>0.5?1:-1, bottom: rng()>0.5?1:-1, left: rng()>0.5?1:-1 };
+    // More complex: each edge has type (0=flat, 1=tab out, -1=slot in, 2=double bump, -2=double slot)
+    // And variation parameters for organic curves
+    const types = [0, 1, -1, 2, -2];
+    const pickType = () => {
+        const r = rng();
+        if (r < 0.08) return 0;   // 8% flat
+        if (r < 0.55) return rng() < 0.5 ? 1 : -1;  // 47% single tab/slot
+        return rng() < 0.5 ? 2 : -2;  // 45% double bump/slot
+    };
+    return {
+        top: pickType(),
+        right: pickType(),
+        bottom: pickType(),
+        left: pickType(),
+        // Variation factors for organic curves (0.3 to 0.7)
+        v1: rng() * 0.4 + 0.3,
+        v2: rng() * 0.4 + 0.3,
+        v3: rng() * 0.4 + 0.3,
+        v4: rng() * 0.4 + 0.3,
+        // Height variation for tabs (0.6 to 1.4)
+        h1: rng() * 0.8 + 0.6,
+        h2: rng() * 0.8 + 0.6,
+        h3: rng() * 0.8 + 0.6,
+        h4: rng() * 0.8 + 0.6,
+        // Width variation for tabs (0.5 to 0.9)
+        w1: rng() * 0.4 + 0.5,
+        w2: rng() * 0.4 + 0.5,
+        w3: rng() * 0.4 + 0.5,
+        w4: rng() * 0.4 + 0.5
+    };
 }
 
 function createPiecePath(ctx, w, h, shape) {
-    const tabSize = Math.min(w,h)*0.22;
+    const baseTab = Math.min(w, h) * 0.22;
+    const v = [shape.v1, shape.v2, shape.v3, shape.v4];
+    const hv = [shape.h1, shape.h2, shape.h3, shape.h4];
+    const wv = [shape.w1, shape.w2, shape.w3, shape.w4];
+
+    function drawEdge(ctx, type, startX, startY, endX, endY, vi, hi, wi) {
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        if (type === 0) {
+            ctx.lineTo(endX, endY);
+            return;
+        }
+
+        const dir = type > 0 ? 1 : -1;
+        const absType = Math.abs(type);
+        const tabH = baseTab * hi * dir;
+
+        if (absType === 1) {
+            // Single tab/slot with organic curve
+            const p1x = startX + dx * (0.5 - wv[vi] * 0.25);
+            const p1y = startY + dy * (0.5 - wv[vi] * 0.25);
+            const p2x = startX + dx * (0.5 + wv[vi] * 0.25);
+            const p2y = startY + dy * (0.5 + wv[vi] * 0.25);
+            const tipX = startX + dx * 0.5 + nx * tabH;
+            const tipY = startY + dy * 0.5 + ny * tabH;
+            const cp1x = p1x + nx * tabH * v[vi];
+            const cp1y = p1y + ny * tabH * v[vi];
+            const cp2x = p2x + nx * tabH * v[vi];
+            const cp2y = p2y + ny * tabH * v[vi];
+
+            ctx.lineTo(p1x, p1y);
+            ctx.bezierCurveTo(cp1x, cp1y, tipX, tipY, tipX, tipY);
+            ctx.bezierCurveTo(tipX, tipY, cp2x, cp2y, p2x, p2y);
+            ctx.lineTo(endX, endY);
+        } else {
+            // Double bump/slot - more complex
+            const p1x = startX + dx * 0.25;
+            const p1y = startY + dy * 0.25;
+            const p2x = startX + dx * 0.5;
+            const p2y = startY + dy * 0.5;
+            const p3x = startX + dx * 0.75;
+            const p3y = startY + dy * 0.75;
+
+            const t1x = p1x + nx * tabH * 0.7;
+            const t1y = p1y + ny * tabH * 0.7;
+            const t2x = p3x + nx * tabH * 0.7;
+            const t2y = p3y + ny * tabH * 0.7;
+
+            const c1x = p1x + nx * tabH * v[vi] * 0.5;
+            const c1y = p1y + ny * tabH * v[vi] * 0.5;
+            const c2x = p2x - nx * tabH * v[vi] * 0.3;
+            const c2y = p2y - ny * tabH * v[vi] * 0.3;
+            const c3x = p2x + nx * tabH * v[vi] * 0.3;
+            const c3y = p2y + ny * tabH * v[vi] * 0.3;
+            const c4x = p3x + nx * tabH * v[vi] * 0.5;
+            const c4y = p3y + ny * tabH * v[vi] * 0.5;
+
+            ctx.lineTo(p1x, p1y);
+            ctx.bezierCurveTo(c1x, c1y, t1x, t1y, t1x, t1y);
+            ctx.bezierCurveTo(t1x, t1y, c2x, c2y, p2x, p2y);
+            ctx.bezierCurveTo(c3x, c3y, t2x, t2y, t2x, t2y);
+            ctx.bezierCurveTo(t2x, t2y, c4x, c4y, p3x, p3y);
+            ctx.lineTo(endX, endY);
+        }
+    }
+
     ctx.beginPath();
-    ctx.moveTo(0,0);
-    if(shape.top!==0) {
-        const dir=shape.top;
-        ctx.lineTo(w*0.35,0);
-        ctx.bezierCurveTo(w*0.35,-tabSize*dir, w*0.65,-tabSize*dir, w*0.65,0);
-        ctx.lineTo(w,0);
-    } else ctx.lineTo(w,0);
-    if(shape.right!==0) {
-        const dir=shape.right;
-        ctx.lineTo(w,h*0.35);
-        ctx.bezierCurveTo(w+tabSize*dir,h*0.35, w+tabSize*dir,h*0.65, w,h*0.65);
-        ctx.lineTo(w,h);
-    } else ctx.lineTo(w,h);
-    if(shape.bottom!==0) {
-        const dir=shape.bottom;
-        ctx.lineTo(w*0.65,h);
-        ctx.bezierCurveTo(w*0.65,h+tabSize*dir, w*0.35,h+tabSize*dir, w*0.35,h);
-        ctx.lineTo(0,h);
-    } else ctx.lineTo(0,h);
-    if(shape.left!==0) {
-        const dir=shape.left;
-        ctx.lineTo(0,h*0.65);
-        ctx.bezierCurveTo(-tabSize*dir,h*0.65, -tabSize*dir,h*0.35, 0,h*0.35);
-        ctx.lineTo(0,0);
-    } else ctx.lineTo(0,0);
+    ctx.moveTo(0, 0);
+    drawEdge(ctx, shape.top, 0, 0, w, 0, 0, 0, 0);
+    drawEdge(ctx, shape.right, w, 0, w, h, 1, 1, 1);
+    drawEdge(ctx, shape.bottom, w, h, 0, h, 2, 2, 2);
+    drawEdge(ctx, shape.left, 0, h, 0, 0, 3, 3, 3);
     ctx.closePath();
 }
 
@@ -778,17 +856,47 @@ async function startLevel(levelId) {
 }
 
 function scatterPieces() {
-    const trayW = trayCanvas.width;
-    const cols = Math.max(1, Math.floor(trayW / (pieceSize.w * 0.72)));
-    const totalRows = Math.ceil(pieces.length / cols);
-    const neededH = totalRows * pieceSize.h * 0.72 + 20;
-    trayCanvas.height = Math.max(neededH, document.getElementById('pieces-tray').clientHeight);
+    const trayW = trayCanvas.width - 20;
+    const trayH = Math.max(600, pieces.length * pieceSize.h * 0.5);
+    trayCanvas.height = trayH;
 
-    pieces.forEach((piece, i) => {
-        if(piece.inTray) {
-            piece.x = (i % cols) * pieceSize.w * 0.72 + 10;
-            piece.y = Math.floor(i / cols) * pieceSize.h * 0.72 + 10;
+    const rng = mulberry32(Date.now() % 100000);
+    const placed = [];
+
+    pieces.forEach((piece) => {
+        if(!piece.inTray) return;
+        const pw = piece.width * 0.65;
+        const ph = piece.height * 0.65;
+        let attempts = 0;
+        let bestX = 10, bestY = 10, bestOverlap = Infinity;
+
+        // Try random positions and pick the one with least overlap
+        while(attempts < 80) {
+            const rx = rng() * (trayW - pw - 10) + 5;
+            const ry = rng() * (trayH - ph - 10) + 5;
+
+            let overlap = 0;
+            for(let p of placed) {
+                const dx = Math.abs(rx - p.x);
+                const dy = Math.abs(ry - p.y);
+                if(dx < pw && dy < ph) {
+                    overlap += (pw - dx) * (ph - dy);
+                }
+            }
+
+            if(overlap < bestOverlap) {
+                bestOverlap = overlap;
+                bestX = rx;
+                bestY = ry;
+            }
+
+            if(overlap === 0) break; // Perfect spot found
+            attempts++;
         }
+
+        piece.x = bestX;
+        piece.y = bestY;
+        placed.push({x: bestX, y: bestY});
     });
 }
 
@@ -841,8 +949,8 @@ function render() {
 
 function drawPiece(context, piece, inTray) {
     context.save();
-    const pw = inTray ? piece.width*0.6 : piece.width;
-    const ph = inTray ? piece.height*0.6 : piece.height;
+    const pw = inTray ? piece.width*0.65 : piece.width;
+    const ph = inTray ? piece.height*0.65 : piece.height;
     const centerX = piece.x + pw/2;
     const centerY = piece.y + ph/2;
     context.translate(centerX, centerY);
@@ -861,8 +969,8 @@ function drawPiece(context, piece, inTray) {
     const srcW = pieceSize.w * imgScaleX;
     const srcH = pieceSize.h * imgScaleY;
 
-    const offsetX = shape.left!==0 ? pieceSize.w*0.12*scale : 0;
-    const offsetY = shape.top!==0 ? pieceSize.h*0.12*scale : 0;
+    const offsetX = shape.left!==0 ? pieceSize.w*0.15*scale : 0;
+    const offsetY = shape.top!==0 ? pieceSize.h*0.15*scale : 0;
 
     context.drawImage(image, srcX-offsetX*imgScaleX, srcY-offsetY*imgScaleY,
         srcW+offsetX*imgScaleX*2, srcH+offsetY*imgScaleY*2,
@@ -910,9 +1018,11 @@ function getCanvasPos(e, targetCanvas) {
 }
 
 function hitTestPiece(piece, x, y, inTray) {
-    const pw = inTray ? piece.width*0.6 : piece.width;
-    const ph = inTray ? piece.height*0.6 : piece.height;
-    return x >= piece.x && x <= piece.x + pw && y >= piece.y && y <= piece.y + ph;
+    const pw = inTray ? piece.width*0.65 : piece.width;
+    const ph = inTray ? piece.height*0.65 : piece.height;
+    // Add padding for easier selection
+    const pad = inTray ? 4 : 0;
+    return x >= piece.x - pad && x <= piece.x + pw + pad && y >= piece.y - pad && y <= piece.y + ph + pad;
 }
 
 function setupGameEvents() {
