@@ -154,8 +154,13 @@
         .pieces-sidebar h3 { font-size: 1rem; text-align: center; margin-bottom: 5px }
         #pieces-tray {
             flex: 1; position: relative; background: var(--bg-primary);
-            border-radius: var(--radius-sm); overflow: hidden; min-height: 200px;
+            border-radius: var(--radius-sm); overflow-y: auto; overflow-x: hidden;
+            min-height: 200px; cursor: grab;
         }
+        #pieces-tray:active { cursor: grabbing; }
+        #pieces-tray::-webkit-scrollbar { width: 6px; }
+        #pieces-tray::-webkit-scrollbar-track { background: transparent; }
+        #pieces-tray::-webkit-scrollbar-thumb { background: var(--accent-purple); border-radius: 3px; }
 
         /* OVERLAYS */
         .completion-overlay, .pause-overlay {
@@ -305,7 +310,7 @@
                 width: 100%; height: 150px; border-left: none;
                 border-top: 3px solid var(--accent-purple); flex-direction: row; padding: 10px;
             }
-            #pieces-tray { min-height: auto; flex: 1 }
+            #pieces-tray { min-height: auto; flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; }
             .menu-grid { grid-template-columns: repeat(2, 1fr) }
             .menu-btn.primary { grid-column: span 2 }
             .levels-grid { grid-template-columns: repeat(3, 1fr) }
@@ -736,7 +741,7 @@ async function startLevel(levelId) {
 
     const sidebar = document.getElementById('pieces-sidebar');
     trayCanvas.width = sidebar.clientWidth - 30;
-    trayCanvas.height = Math.max(400, rows*pieceSize.h*0.6);
+    trayCanvas.height = 100; // Will be resized by scatterPieces
 
     pieces=[]; groups=[];
     const shapes=[];
@@ -773,12 +778,16 @@ async function startLevel(levelId) {
 }
 
 function scatterPieces() {
-    const trayW = trayCanvas.width, trayH = trayCanvas.height;
-    const cols = Math.floor(trayW / (pieceSize.w*0.7)) || 1;
-    pieces.forEach((piece,i)=>{
+    const trayW = trayCanvas.width;
+    const cols = Math.max(1, Math.floor(trayW / (pieceSize.w * 0.72)));
+    const totalRows = Math.ceil(pieces.length / cols);
+    const neededH = totalRows * pieceSize.h * 0.72 + 20;
+    trayCanvas.height = Math.max(neededH, document.getElementById('pieces-tray').clientHeight);
+
+    pieces.forEach((piece, i) => {
         if(piece.inTray) {
-            piece.x = (i%cols)*pieceSize.w*0.75 + 10;
-            piece.y = Math.floor(i/cols)*pieceSize.h*0.75 + 10;
+            piece.x = (i % cols) * pieceSize.w * 0.72 + 10;
+            piece.y = Math.floor(i / cols) * pieceSize.h * 0.72 + 10;
         }
     });
 }
@@ -880,10 +889,16 @@ function drawPiece(context, piece, inTray) {
 
 function renderTray() {
     if(!trayCtx) return;
+    const trayDiv = document.getElementById('pieces-tray');
+    const scrollX = trayDiv.scrollLeft || 0;
+    const scrollY = trayDiv.scrollTop || 0;
     trayCtx.clearRect(0,0,trayCanvas.width,trayCanvas.height);
     trayCtx.fillStyle = 'rgba(255,255,255,0.5)';
     trayCtx.fillRect(0,0,trayCanvas.width,trayCanvas.height);
+    trayCtx.save();
+    trayCtx.translate(-scrollX, -scrollY);
     pieces.filter(p=>p.inTray).forEach(piece=>drawPiece(trayCtx, piece, true));
+    trayCtx.restore();
 }
 
 function getCanvasPos(e, targetCanvas) {
@@ -906,6 +921,35 @@ function setupGameEvents() {
     canvas.onpointerup = onPointerUp;
     canvas.ondblclick = onDoubleClick;
     trayCanvas.onpointerdown = onTrayPointerDown;
+
+    // Tray scroll via wheel
+    const trayDiv = document.getElementById('pieces-tray');
+    trayDiv.onwheel = (e) => {
+        if(e.target.closest('#pieces-tray')) {
+            trayDiv.scrollTop += e.deltaY;
+            e.preventDefault();
+        }
+    };
+
+    // Tray touch scroll (mobile horizontal)
+    let trayTouchStart = {x:0,y:0,scrollLeft:0,scrollTop:0};
+    trayDiv.ontouchstart = (e) => {
+        trayTouchStart = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            scrollLeft: trayDiv.scrollLeft,
+            scrollTop: trayDiv.scrollTop
+        };
+    };
+    trayDiv.ontouchmove = (e) => {
+        const dx = trayTouchStart.x - e.touches[0].clientX;
+        const dy = trayTouchStart.y - e.touches[0].clientY;
+        if(window.innerWidth <= 768) {
+            trayDiv.scrollLeft = trayTouchStart.scrollLeft + dx;
+        } else {
+            trayDiv.scrollTop = trayTouchStart.scrollTop + dy;
+        }
+    };
 }
 
 function onPointerDown(e) {
@@ -955,9 +999,13 @@ function onDoubleClick(e) {
 function onTrayPointerDown(e) {
     e.preventDefault();
     const pos = getCanvasPos(e, trayCanvas);
+    const trayDiv = document.getElementById('pieces-tray');
+    const scrollX = trayDiv.scrollLeft || 0;
+    const scrollY = trayDiv.scrollTop || 0;
+    const adjustedPos = {x: pos.x + scrollX, y: pos.y + scrollY};
     const trayPieces = pieces.filter(p=>p.inTray).reverse();
     for(let piece of trayPieces) {
-        if(hitTestPiece(piece, pos.x, pos.y, true)) {
+        if(hitTestPiece(piece, adjustedPos.x, adjustedPos.y, true)) {
             piece.inTray = false;
             piece.x = (canvas.width - piece.width)/2;
             piece.y = (canvas.height - piece.height)/2;
